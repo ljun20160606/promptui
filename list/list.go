@@ -11,6 +11,9 @@ import (
 // the item fits the searched term.
 type Searcher func(input string, index int) bool
 
+// CustomSearch is a function that is used custom search rule, it return item of searched term.
+type CustomSearch func(input string, items []*interface{}) []*interface{}
+
 // NotFound is an index returned when no item was selected. This could
 // happen due to a search without results.
 const NotFound = -1
@@ -19,12 +22,12 @@ const NotFound = -1
 // visible items. The list can be moved up, down by one item of time or an
 // entire page (ie: visible size). It keeps track of the current selected item.
 type List struct {
-	items    []*interface{}
-	scope    []*interface{}
-	cursor   int // cursor holds the index of the current selected item
-	size     int // size is the number of visible options
-	start    int
-	Searcher Searcher
+	items        []*interface{}
+	scope        []*interface{}
+	cursor       int // cursor holds the index of the current selected item
+	size         int // size is the number of visible options
+	start        int
+	CustomSearch CustomSearch
 }
 
 // New creates and initializes a list of searchable items. The items attribute must be a slice type with a
@@ -77,18 +80,12 @@ func (l *List) CancelSearch() {
 	l.cursor = 0
 	l.start = 0
 	l.scope = l.items
+	// Notify cancel event
+	l.search("")
 }
 
 func (l *List) search(term string) {
-	var scope []*interface{}
-
-	for i, item := range l.items {
-		if l.Searcher(term, i) {
-			scope = append(scope, item)
-		}
-	}
-
-	l.scope = scope
+	l.scope = l.CustomSearch(term, l.items)
 }
 
 // Start returns the current render start position of the list.

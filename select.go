@@ -66,6 +66,9 @@ type Select struct {
 	// it is implemented.
 	Searcher list.Searcher
 
+	// It is unimplemented by default and search will use Searcher
+	CustomSearch list.CustomSearch
+
 	// StartInSearchMode sets whether or not the select mode should start in search mode or selection mode.
 	// For search mode to work, the Search property must be implemented.
 	StartInSearchMode bool
@@ -202,7 +205,20 @@ func (s *Select) RunCursorAt(cursorPos, scroll int) (int, string, error) {
 	if err != nil {
 		return 0, "", err
 	}
-	l.Searcher = s.Searcher
+
+	if s.CustomSearch == nil && s.Searcher != nil {
+		l.CustomSearch = func(input string, items []*interface{}) []*interface{} {
+			var scope []*interface{}
+			for i, item := range items {
+				if s.Searcher(input, i) {
+					scope = append(scope, item)
+				}
+			}
+			return scope
+		}
+	} else {
+		l.CustomSearch = s.CustomSearch
+	}
 
 	s.list = l
 
@@ -242,7 +258,7 @@ func (s *Select) innerRun(cursorPos, scroll int, top rune) (int, string, error) 
 
 	cur := NewCursor("", s.Pointer, false)
 
-	canSearch := s.Searcher != nil
+	canSearch := s.list.CustomSearch != nil
 	searchMode := s.StartInSearchMode
 	s.list.SetCursor(cursorPos)
 	s.list.SetStart(scroll)
@@ -393,7 +409,14 @@ func (s *Select) innerRun(cursorPos, scroll int, top rune) (int, string, error) 
 	rl.Write([]byte(showCursor))
 	rl.Close()
 
-	return s.list.Index(), fmt.Sprintf("%v", item), err
+	var index int
+	if searchMode {
+		index = idx
+	} else {
+		index = s.list.Index()
+	}
+
+	return index, fmt.Sprintf("%v", item), err
 }
 
 // ScrollPosition returns the current scroll position.
