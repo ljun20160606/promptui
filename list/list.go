@@ -54,14 +54,21 @@ func New(items interface{}, size int) (*List, error) {
 
 // Prev moves the visible list back one item. If the selected item is out of
 // view, the new select item becomes the last visible item. If the list is
-// already at the top, nothing happens.
+// already at the top, move to bottom.
 func (l *List) Prev() {
 	if l.cursor > 0 {
 		l.cursor--
-	}
-
-	if l.start > l.cursor {
-		l.start = l.cursor
+		if l.start > l.cursor {
+			l.start = l.cursor
+		}
+	} else {
+		max := len(l.scope) - 1
+		l.cursor = max
+		if index := max - l.size; index < 0 {
+			l.start = 0
+		} else {
+			l.start = index
+		}
 	}
 }
 
@@ -127,16 +134,18 @@ func (l *List) SetCursor(i int) {
 
 // Next moves the visible list forward one item. If the selected item is out of
 // view, the new select item becomes the first visible item. If the list is
-// already at the bottom, nothing happens.
+// already at the bottom, move to top.
 func (l *List) Next() {
 	max := len(l.scope) - 1
 
 	if l.cursor < max {
 		l.cursor++
-	}
-
-	if l.start+l.size <= l.cursor {
-		l.start = l.cursor - l.size + 1
+		if l.start+l.size <= l.cursor {
+			l.start = l.cursor - l.size + 1
+		}
+	} else {
+		l.cursor = 0
+		l.start = 0
 	}
 }
 
